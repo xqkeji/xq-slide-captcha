@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>xq-slide-captcha · 滑动验证码组件演示</title>
+</head>
+<body>
+  <xq-include file="/partials/header.html"></xq-include>
+
+  <main class="container py-5">
+    <div class="p-5 mb-4 bg-light rounded-3 xq-hero">
+      <div class="container-fluid py-4">
+        <h1 class="display-5 fw-bold">xq-slide-captcha</h1>
+        <p class="lead mb-2">滑动拼图验证码前端组件库，TypeScript + SCSS 实现。</p>
+        <p class="mb-4">配套后端 <code>xqkeji/xq-app-admin</code>：<code>/admin/user/captchadata</code> 生成数据、<code>/admin/user/captchacheck</code> 检验。</p>
+        <a class="btn btn-primary btn-lg" href="https://github.com/xqkeji/xq-slide-captcha" target="_blank" rel="noopener noreferrer">GitHub &rarr;</a>
+      </div>
+    </div>
+
+    <div class="alert alert-warning" role="alert">
+      本页使用<strong>浏览器内模拟后端</strong>：图片由 Canvas 现场绘制，答案存在内存里，仅供演示组件交互，<strong>没有任何安全性</strong>。
+      要接真实后端，把 <code>src/main.ts</code> 顶部的 <code>USE_REAL_BACKEND</code> 改成 <code>true</code> 即可，请求与响应契约完全一致。
+    </div>
+
+    <div class="alert alert-info" role="alert">
+      默认 <code>dataUrl</code> / <code>checkUrl</code> 已指向 <code>xq-app-admin</code> 的
+      <code>/admin/user/captchadata</code> 与 <code>/admin/user/captchacheck</code>；本页用模拟后端替代这两个请求。
+      切换位置在 <code>src/main.ts</code> 顶部的 <code>USE_REAL_BACKEND = false</code>：改成 <code>true</code>，本页（含二次验证）一起走真实 <code>FetchTransport</code>；实际项目中 <code>init()</code> 不传 <code>transport</code> 即为真实请求。
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h2 class="h5 card-title">表单演示</h2>
+            <p class="card-text text-body-secondary small">验证通过后组件会往表单里插入一次性令牌隐藏输入框，提交时由后端二次校验。</p>
+            <form id="demo-form" novalidate>
+              <div class="mb-3">
+                <label class="form-label" for="demo-username">用户名</label>
+                <input class="form-control" id="demo-username" name="username" type="text" value="demo" autocomplete="username" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="demo-password">密码</label>
+                <input class="form-control" id="demo-password" name="password" type="password" value="demo" autocomplete="current-password" />
+              </div>
+              <div class="mb-3">
+                <div class="xq-captcha"></div>
+              </div>
+              <button class="btn btn-primary" type="submit">提交表单</button>
+            </form>
+            <div class="mt-3" id="demo-submit-result"></div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="h5 card-title">组件状态</h2>
+            <pre class="demo-state bg-body-tertiary rounded p-3 mb-0" id="demo-state">{}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h2 class="h5 card-title">控制面板</h2>
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="demo-mode">验证模式</label>
+                <select class="form-select" id="demo-mode">
+                  <option value="dual" selected>dual（令牌）</option>
+                  <option value="backend_only">backend_only</option>
+                </select>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="demo-theme">主题</label>
+                <select class="form-select" id="demo-theme">
+                  <option value="auto" selected>auto</option>
+                  <option value="light">light</option>
+                  <option value="dark">dark</option>
+                </select>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="demo-reinit">重新初始化</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="demo-refresh">刷新</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="demo-reset">重置</button>
+              <button class="btn btn-outline-primary btn-sm" type="button" id="demo-secondary"
+                      title="模拟宿主表单提交：拿组件签发的令牌再向后端校验一次，用过即毁">二次验证</button>
+            </div>
+            <p class="text-body-secondary small mt-3 mb-0">
+              模式改动会重建组件；主题改动走 <code>setTheme()</code>，不重建。
+            </p>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="h5 card-title">事件日志</h2>
+            <ol class="demo-log bg-body-tertiary rounded p-3" id="demo-log"></ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-5">
+      <h2 class="h4">接入方式</h2>
+
+      <h3 class="h6 mt-4">模块引入（TypeScript / 打包器）</h3>
+      <pre class="demo-code bg-body-tertiary rounded p-3"><code>import { SlideCaptcha } from 'xq-slide-captcha';
+import 'bootstrap/dist/css/bootstrap.min.css';          // 先加载 Bootstrap 5.3
+import 'xq-slide-captcha/dist/css/xq-slide-captcha.min.css';
+
+const captcha = new SlideCaptcha();
+
+captcha.init({
+  handleDom: '.xq-captcha',
+  dataUrl: '/admin/user/captchadata',    // xq-app-admin：生成数据
+  checkUrl: '/admin/user/captchacheck',  // xq-app-admin：检验
+  inputName: 'xq_captcha_token',
+});
+
+captcha.onSuccess((token) =&gt; console.log('通过', token));</code></pre>
+
+      <h3 class="h6 mt-4">直接引入构建产物（无打包器）</h3>
+      <p class="text-body-secondary small mb-2">
+        把包内 <code>dist/css/</code> 与 <code>dist/js/</code> 拷到站点静态目录，页面级实例自动挂到
+        <code>window.xqSlideCaptcha</code>；弹窗与按钮基于 Bootstrap 5.3，页面需先引入 Bootstrap CSS（IIFE 脚本已内联 Bootstrap JS）。
+      </p>
+      <pre class="demo-code bg-body-tertiary rounded p-3 mb-0"><code>&lt;link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css" /&gt;
+&lt;link rel="stylesheet" href="/static/xq-slide-captcha/css/xq-slide-captcha.min.css" /&gt;
+
+&lt;form action="/login" method="post"&gt;
+  &lt;div class="xq-captcha"&gt;&lt;/div&gt;
+  &lt;button type="submit"&gt;登录&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;script src="/static/xq-slide-captcha/js/xq-slide-captcha.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  xqSlideCaptcha
+    .init({
+      dataUrl: '/admin/user/captchadata',
+      checkUrl: '/admin/user/captchacheck',
+      inputName: 'xq_captcha_token',
+    })
+    .onSuccess(function (token) { console.log('通过', token); });
+&lt;/script&gt;</code></pre>
+      <p class="text-body-secondary small mb-0 mt-2">
+        脚本引入时<strong>不用设置 <code>transport</code></strong>：全局实例默认用内置 <code>FetchTransport</code> 请求上面两个地址；自定义传输层请用模块方式。接口由 <code>xq-app-admin</code> 提供，参数口径见 README。
+      </p>
+    </div>
+  </main>
+
+  <xq-include file="/partials/footer.html"></xq-include>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

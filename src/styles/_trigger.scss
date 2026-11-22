@@ -1,0 +1,66 @@
+// 触发元素由组件补上 Bootstrap 的 btn / btn-outline-primary，
+// 这里只补尺寸、ripple 与通过态的视觉反馈。
+
+.xq-captcha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15rem;
+  min-height: 2.6rem;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  &.xq-captcha-verified {
+    border-color: var(--bs-success);
+    background-color: var(--bs-success);
+    color: var(--bs-white);
+
+    &::before,
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.xq-captcha-ripple {
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  &::before {
+    animation: xq-captcha-ripple 2s ease-out infinite;
+  }
+
+  &::after {
+    animation: xq-captcha-ripple 2s ease-out infinite 0.5s;
+  }
+}
+
+@keyframes xq-captcha-ripple {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(5);
+  }
+}

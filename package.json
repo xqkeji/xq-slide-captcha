@@ -1,0 +1,63 @@
+{
+  "name": "xq-slide-captcha",
+  "version": "1.0.0",
+  "description": "滑动拼图验证码前端组件（TypeScript + SCSS），配套 xqkeji/xq-app-admin 的 captchadata / captchacheck 接口",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "scripts": {
+    "dev": "vite serve src/",
+    "html": "vite build src/",
+    "build": "npx unbuild && npm run convert && npm run min-js && npm run sass && npm run min-css && npx xq-banner",
+    "convert": "esbuild ./src/ts/index.ts --outfile=./dist/js/xq-slide-captcha.js --bundle",
+    "min-js": "uglifyjs ./dist/js/xq-slide-captcha.js -m -o ./dist/js/xq-slide-captcha.min.js",
+    "sass": "sass ./src/styles/index.scss ./dist/css/xq-slide-captcha.css",
+    "min-css": "cleancss -o ./dist/css/xq-slide-captcha.min.css ./dist/css/xq-slide-captcha.css",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xqkeji/xq-slide-captcha.git"
+  },
+  "keywords": [
+    "HTML5",
+    "JavaScript",
+    "TypeScript",
+    "Captcha",
+    "SlideCaptcha",
+    "滑动拼图验证码"
+  ],
+  "author": "xqkeji.cn",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://xqkeji.cn/demo/xq-slide-captcha",
+  "dependencies": {
+    "bootstrap": "^5.3.3",
+    "xq-captcha-core": "^1.0.0",
+    "xq-util": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "clean-css-cli": "^5.6.2",
+    "esbuild": "^0.27.0",
+    "sass": "^1.80.0",
+    "typescript": "^5.6.0",
+    "uglify-js": "^3.17.4",
+    "unbuild": "^1.1.1",
+    "vite": "^8.0.0",
+    "vite-plugin-xq-cp-dep": "^1.1.1",
+    "vite-plugin-xq-include": "^1.1.1",
+    "xq-banner": "^1.0.10"
+  }
+}

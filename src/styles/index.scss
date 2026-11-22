@@ -1,0 +1,9 @@
+// 组件样式入口。只包含 Bootstrap 没有提供的少量布局规则，
+// 颜色、排版、按钮、弹窗、spinner、alert、progress 全部复用 Bootstrap 5.3。
+// 宿主需先加载 Bootstrap CSS，再加载本文件。
+
+@use 'metrics';
+@use 'trigger';
+@use 'modal';
+@use 'stage';
+@use 'slider';

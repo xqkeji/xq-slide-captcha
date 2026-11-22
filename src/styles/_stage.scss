@@ -1,0 +1,31 @@
+@use 'metrics' as m;
+
+// 定位、叠放、圆角、边框与 flex 布局交给 Bootstrap utilities；
+// 这里只保留拼图画布特有的几何与状态规则。
+.xq-captcha-canvas-wrap {
+  aspect-ratio: 8 / 5;
+}
+
+.xq-captcha-canvas-wrap canvas {
+  touch-action: none;
+}
+
+.xq-captcha-loading {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+}
+
+// Bootstrap 的 alert 负责配色与圆角，这里只做覆盖定位。
+.xq-captcha-alert-error,
+.xq-captcha-alert-success {
+  position: absolute;
+  right: 0.75rem;
+  bottom: calc(#{m.$slide-height} + 1.25rem);
+  left: 0.75rem;
+  z-index: 6;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8125rem;
+  text-align: center;
+}

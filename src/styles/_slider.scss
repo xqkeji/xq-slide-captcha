@@ -1,0 +1,41 @@
+@use 'metrics' as m;
+
+.xq-captcha-slide-area {
+  height: m.$slide-height;
+  margin-top: 0.75rem;
+  background-color: var(--bs-tertiary-bg);
+  touch-action: none;
+}
+
+.xq-captcha-slide-block {
+  width: m.$block-size;
+  height: m.$block-size;
+  cursor: grab;
+  touch-action: none;
+  -webkit-touch-callout: none;
+
+  &::before {
+    content: '››';
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.1em;
+  }
+
+  &.xq-captcha-dragging {
+    cursor: grabbing;
+  }
+}
+
+.xq-captcha-slide-hint {
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+}
+
+.xq-captcha-progress {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.25rem;
+  left: calc(#{m.$block-size} + 0.25rem);
+  height: 0.2rem;
+  z-index: 1;
+}
