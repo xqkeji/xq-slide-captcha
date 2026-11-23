@@ -34,8 +34,8 @@
         <div class="card shadow-sm mb-4">
           <div class="card-body">
             <h2 class="h5 card-title">表单演示</h2>
-            <p class="card-text text-body-secondary small">验证通过后组件会往表单里插入一次性令牌隐藏输入框，提交时由后端二次校验。</p>
-            <form id="demo-form" novalidate>
+            <p class="card-text text-body-secondary small">表单内预置 HTML5 守卫输入框并带自定义验证提示，未通过人机验证时浏览器原生拦截提交；通过后组件写入一次性令牌，由后端二次校验。</p>
+            <form id="demo-form">
               <div class="mb-3">
                 <label class="form-label" for="demo-username">用户名</label>
                 <input class="form-control" id="demo-username" name="username" type="text" value="demo" autocomplete="username" />
@@ -46,6 +46,8 @@
               </div>
               <div class="mb-3">
                 <div class="xq-captcha"></div>
+                <input type="text" name="xq_captcha_token" class="xq-captcha-guard visually-hidden" tabindex="-1"
+                       autocomplete="off" data-xq-guard-text="请先完成人机验证" />
               </div>
               <button class="btn btn-primary" type="submit">提交表单</button>
             </form>
@@ -131,8 +133,11 @@ captcha.onSuccess((token) =&gt; console.log('通过', token));</code></pre>
       <pre class="demo-code bg-body-tertiary rounded p-3 mb-0"><code>&lt;link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css" /&gt;
 &lt;link rel="stylesheet" href="/static/xq-slide-captcha/css/xq-slide-captcha.min.css" /&gt;
 
-&lt;form action="/login" method="post"&gt;
+&lt;form action="/login" method="post"&gt;&lt;!-- 不要加 novalidate --&gt;
   &lt;div class="xq-captcha"&gt;&lt;/div&gt;
+  &lt;!-- 守卫输入框：未通过验证时浏览器原生拦截 --&gt;
+  &lt;input type="text" name="xq_captcha_token" class="xq-captcha-guard visually-hidden"
+         tabindex="-1" autocomplete="off" data-xq-guard-text="请先完成人机验证" /&gt;
   &lt;button type="submit"&gt;登录&lt;/button&gt;
 &lt;/form&gt;
 

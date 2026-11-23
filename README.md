@@ -56,11 +56,14 @@ import 'xq-slide-captcha/dist/css/xq-slide-captcha.min.css';
   <link rel="stylesheet" href="/static/xq-slide-captcha/css/xq-slide-captcha.min.css" />
 </head>
 <body>
-  <form action="/login" method="post">
+  <form action="/login" method="post"><!-- 不要加 novalidate -->
     <input name="username" />
     <input name="password" type="password" />
     <!-- 触发元素：点击后弹出滑动拼图验证码 -->
     <div class="xq-captcha"></div>
+    <!-- 守卫输入框：未通过验证时由浏览器原生拦截提交 -->
+    <input type="text" name="xq_captcha_token" class="xq-captcha-guard visually-hidden"
+           tabindex="-1" autocomplete="off" data-xq-guard-text="请先完成人机验证" />
     <button type="submit">登录</button>
   </form>
 
@@ -83,7 +86,7 @@ import 'xq-slide-captcha/dist/css/xq-slide-captcha.min.css';
 </html>
 ```
 
-路径按实际静态目录调整。脚本方式下**不用设置 `transport`**：全局实例的默认传输层就是内置 `FetchTransport`，会请求上面的 `dataUrl` / `checkUrl`（默认即 xq-app-admin 的两个地址）。要自定义传输层请用模块方式传入。验证通过后组件会在含 `.xq-captcha` 的表单里插入名为 `xq_captcha_token` 的隐藏输入框，由后端对令牌做二次校验；要自定义实例可用模块方式的 `installGlobal()`。
+路径按实际静态目录调整。脚本方式下**不用设置 `transport`**：全局实例的默认传输层就是内置 `FetchTransport`，会请求上面的 `dataUrl` / `checkUrl`（默认即 xq-app-admin 的两个地址）。要自定义传输层请用模块方式传入。验证通过后组件会写入令牌字段，由后端二次校验；令牌字段支持「宿主页静态守卫」和「组件动态插入」两种模式，见下方「表单提交守卫」。要自定义实例可用模块方式的 `installGlobal()`。
 
 ## 集成到宿主页面
 
@@ -93,9 +96,21 @@ import 'xq-slide-captcha/dist/css/xq-slide-captcha.min.css';
   <input name="password" type="password" />
   <!-- 触发元素：统一使用 .xq-captcha，可匹配多个 -->
   <div class="xq-captcha"></div>
+  <!-- 可选：静态守卫输入框，启用 HTML5 原生拦截（推荐） -->
+  <input type="text" name="xq_captcha_token" class="xq-captcha-guard visually-hidden"
+         tabindex="-1" autocomplete="off" data-xq-guard-text="请先完成人机验证" />
   <button type="submit">登录</button>
 </form>
 ```
+
+### 表单提交守卫
+
+组件本身不拦截表单提交。若希望「验证没通过时表单提交不了、并给出原生提示」，在表单里预置上面的守卫输入框即可——它用 Bootstrap `visually-hidden` 隐藏但可聚焦，组件通过 `setCustomValidity` 控制它：未通过时带上 `data-xq-guard-text` 的提示让浏览器拦截提交，通过后清空提示并写入令牌。要点：
+
+- **表单不要加 `novalidate`**，否则原生验证失效。
+- 守卫输入框按 `inputName`（默认 `xq_captcha_token`）在触发器所属表单内查找，多实例各自在自己的表单里不会串写。
+- `backend_only` 模式通过后无令牌，守卫仍会放行，但不写值；安全仍然靠后端会话校验兜底。
+- 若页面不放守卫输入框，组件回退到旧行为：通过时动态插入 `type=hidden` 字段，不提供原生拦截——此时请自行在 submit 里用 `captcha.result()` 判断，并由后端二次校验兜底。
 
 ```ts
 import { SlideCaptcha } from 'xq-slide-captcha';
@@ -135,8 +150,9 @@ captcha
 | `showClose` | `true` | 是否显示关闭按钮 |
 | `showRefresh` | `true` | 是否显示刷新按钮 |
 | `theme` | `auto` | `auto` / `light` / `dark` |
-| `inputName` | `xq_captcha_token` | 验证通过后写入表单的隐藏输入框名；**留空则不插入** |
-| `autoInsertInput` | `true` | 是否自动插入隐藏输入框 |
+| `inputName` | `xq_captcha_token` | 令牌字段名，守卫输入框与动态输入框都用它；**留空则不写入** |
+| `autoInsertInput` | `true` | 回退模式下是否自动插入 `type=hidden` 输入框（守卫模式不受此影响） |
+| `guardText` | `请先完成人机验证` | 守卫输入框未通过时的提示；页面元素的 `data-xq-guard-text` 优先 |
 | `timeout` | `10000` | 请求超时毫秒数 |
 | `copyright` | `{ text: '© xqkeji.cn', url: 'https://xqkeji.cn/', title: 'xqkeji.cn' }` | 弹窗底部版权行 |
 | `transport` | 内置 `FetchTransport` | 自定义传输层，演示页注入本地模拟后端时使用 |

@@ -92,6 +92,12 @@ class SlideBehaviour extends CaptchaBehaviour {
       const image = await loadImage(data.image_base64);
       this.canvas.setVisible(true);
       this.canvas.measure();
+      // 滑块最大位移在显示像素空间：缺口最右 = (图片宽度 - 滑块宽度) × 显示缩放。
+      // 不设置会让 slider.move() 把位移钳制到 0，滑块拖不动。
+      this.ctx.state.maxOffset = Math.max(
+        0,
+        Math.round((this.ctx.state.imgWidth - this.ctx.state.markWidth) * this.ctx.state.scale),
+      );
       this.canvas.drawBackground(image);
       this.canvas.clearMark();
       this.layer.setImage(image);
