@@ -70,11 +70,12 @@ export class CanvasPair {
       return;
     }
 
-    // 优先量容器：画布在加载阶段被隐藏时 rect 为 0，容器仍有正确宽度。
+    // 优先量画布自身：它就是 offset 折算的基准 bg_width / 实际显示宽度。
+    // 容器 rect 含 1px 边框，会把折算后的 offset 系统性算小 ~0.6%，白吃容差。
     const wrap = this.dom.query(SEL.canvasWrap);
     const width =
-      wrap?.getBoundingClientRect().width ||
       canvas.getBoundingClientRect().width ||
+      wrap?.clientWidth ||
       canvas.width;
     this.state.scale = width / canvas.width;
     this.state.invScale = canvas.width / width;

@@ -42,9 +42,10 @@ class SlideBehaviour extends CaptchaBehaviour {
     this.hint = new Hint(this.ctx.dom, this.ctx.options as Options);
     this.loading = new Loading(this.ctx.dom);
     this.slider = new Slider(this.ctx.dom, this.ctx.state, this.layer, (offset, track) => {
+      // offset 是图片像素（基准 bg_width），服务端容差只有 8px，这里不能再做二次缩放。
       this.ctx.submit({
-        captcha_r: offset,
-        slide_track: track,
+        offset,
+        track,
       });
     });
   }
@@ -92,12 +93,7 @@ class SlideBehaviour extends CaptchaBehaviour {
       const image = await loadImage(data.image_base64);
       this.canvas.setVisible(true);
       this.canvas.measure();
-      // 滑块最大位移在显示像素空间：缺口最右 = (图片宽度 - 滑块宽度) × 显示缩放。
-      // 不设置会让 slider.move() 把位移钳制到 0，滑块拖不动。
-      this.ctx.state.maxOffset = Math.max(
-        0,
-        Math.round((this.ctx.state.imgWidth - this.ctx.state.markWidth) * this.ctx.state.scale),
-      );
+      this.updateMaxOffset();
       this.canvas.drawBackground(image);
       this.canvas.clearMark();
       this.layer.setImage(image);
@@ -108,6 +104,18 @@ class SlideBehaviour extends CaptchaBehaviour {
       console.error('xq-slide-captcha: 验证码图片加载失败', error);
       this.loading.fail();
     }
+  }
+
+  /**
+   * 滑块最大位移在显示像素空间：缺口最右 = (图片宽度 - 滑块宽度) × 显示缩放。
+   * 不设置会让 slider.move() 把位移钳制到 0，滑块拖不动；
+   * 弹窗真正显示后宽度会变，必须跟着重算，否则右侧缺口拖不到。
+   */
+  private updateMaxOffset(): void {
+    this.ctx.state.maxOffset = Math.max(
+      0,
+      Math.round((this.ctx.state.imgWidth - this.ctx.state.markWidth) * this.ctx.state.scale),
+    );
   }
 
   override onDataError(): void {
@@ -124,6 +132,7 @@ class SlideBehaviour extends CaptchaBehaviour {
 
   override onModalShown(): void {
     this.canvas.measure();
+    this.updateMaxOffset();
     this.layer.draw();
   }
 

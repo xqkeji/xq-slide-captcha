@@ -239,15 +239,18 @@ const backend: Transport = USE_REAL_BACKEND
 | `bg_width` / `bg_height` | 画布尺寸，前端据此设置 canvas 的 `width`/`height` 属性 |
 | `mark_width` / `mark_height` | 缺口尺寸 |
 | `pos_y` | 缺口纵坐标，用作滑块初始 y 与轨迹 y 基准。**横坐标即答案，后端从不下发** |
+| `challenge_id` | 本轮图片的挑战标识。组件保存在实例状态里，校验时原样带回；缺失时退回「按会话存一份」的旧路径 |
 
 ### POST `checkUrl`
 
 | 场景 | JSON 请求体字段 |
 | --- | --- |
-| 滑动检验 | `captcha_r`（数字偏移量，**图片像素**）+ `slide_track`（数组，元素为 `{x, y, t}`） |
+| 滑动检验 | `offset`（数字偏移量，**图片像素**）+ `track`（数组，元素为 `{x, y, t}`）+ `challenge_id` |
 | 二次验证 | `token`（由宿主表单提交，不经组件） |
 
-轨迹点为 `{x, y, t}`，坐标是图片像素，`t` 为相对拖动起点的毫秒数。`captcha_r` 是数字、`slide_track` 是 JSON 数组，均直接放在请求体里，不是字符串化的 JSON。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。
+轨迹点为 `{x, y, t}`，坐标是图片像素，`t` 为相对拖动起点的毫秒数。`offset` 是数字、`track` 是 JSON 数组，均直接放在请求体里，不是字符串化的 JSON。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成（`offset = 位移 × bg_width / 实际显示宽度`），宿主无需关心缩放与 DPR。
+
+`challenge_id` 由组件自动附加，宿主不用管。它绑在「当前显示的这张图」上：换图、重置、校验返回 202 时都会清空并重新取图；**校验请求永远不带 `token`**，否则会触发令牌二次校验并把令牌消费掉。
 
 两种验证模式（与 `xq-app-admin` 后端口径一致）：
 
@@ -348,7 +351,7 @@ html/                          演示页产物（npm run html，不发布）
 - 修复上游两块画布横向错位 1px 的问题（写死像素宽度 + `margin: auto` 溢出退化 vs `left: 50%` 居中基准不一致）：两块画布同处一个相对定位容器，宽度流式，逐像素重合。
 - 修复上游重复 `init()` 叠加监听导致一次拖动提交两回的问题：先解绑再绑，并提供 `dispose()` 释放监听、计时器与弹窗 DOM（上游没有任何销毁入口）。
 - `backend_only` 模式下无令牌时移除隐藏输入框，避免向表单提交无效值。
-- 触发元素统一为 `.xq-captcha`，复位事件统一为 `xq.form.error`；`captcha_r` / `slide_track` 参数名与老后端响应兼容；保留滑块键盘操作与 ARIA 语义。
+- 触发元素统一为 `.xq-captcha`，复位事件统一为 `xq.form.error`；`offset` / `track` / `challenge_id` 参数名与老后端响应兼容；保留滑块键盘操作与 ARIA 语义。
 - **UI 完全重写为 Bootstrap 5.3**：弹窗用 Bootstrap Modal 组件与 `data-bs-theme`；删除了原先的 `--xq-captcha-*` 色板，滑块抠图换成独立的窗口平均亮度差分算法，内部选择器全部改到 `xq-captcha-*` 命名空间。
 
 ## 共享核心 xq-captcha-core
