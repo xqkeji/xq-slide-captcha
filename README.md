@@ -189,7 +189,9 @@ const backend: Transport = USE_REAL_BACKEND
   : new MockBackend();
 ```
 
-内置 `FetchTransport` 用 `application/x-www-form-urlencoded` 提交、`credentials: 'same-origin'` 带上同源 Cookie（答案存在 PHP 会话里），超时用 `AbortController` 中断。`HttpError.status` 沿用上游语义：`-1` 超时、`0` 网络错误、其余为 HTTP 状态码。
+内置 `FetchTransport` 用 `application/json` 提交（请求体为 JSON，偏移量是数字、轨迹是数组，均直接放入）、`credentials: 'same-origin'` 带上同源 Cookie（答案存在 PHP 会话里），超时用 `AbortController` 中断。`HttpError.status` 沿用上游语义：`-1` 超时、`0` 网络错误、其余为 HTTP 状态码。
+
+> 后端需按 JSON 请求体解析（PHP 用 `json_decode(file_get_contents('php://input'), true)`，`$_POST` 不会填充）。
 
 ## 实例 API
 
@@ -240,12 +242,12 @@ const backend: Transport = USE_REAL_BACKEND
 
 ### POST `checkUrl`
 
-| 场景 | 表单字段 |
+| 场景 | JSON 请求体字段 |
 | --- | --- |
-| 滑动检验 | `captcha_r`（偏移量，**图片像素**）+ `slide_track`（JSON 数组） |
+| 滑动检验 | `captcha_r`（数字偏移量，**图片像素**）+ `slide_track`（数组，元素为 `{x, y, t}`） |
 | 二次验证 | `token`（由宿主表单提交，不经组件） |
 
-轨迹点为 `{x, y, t}`，坐标是图片像素，`t` 为相对拖动起点的毫秒数。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。
+轨迹点为 `{x, y, t}`，坐标是图片像素，`t` 为相对拖动起点的毫秒数。`captcha_r` 是数字、`slide_track` 是 JSON 数组，均直接放在请求体里，不是字符串化的 JSON。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。
 
 两种验证模式（与 `xq-app-admin` 后端口径一致）：
 

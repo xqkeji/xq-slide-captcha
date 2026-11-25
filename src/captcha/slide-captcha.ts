@@ -43,8 +43,8 @@ class SlideBehaviour extends CaptchaBehaviour {
     this.loading = new Loading(this.ctx.dom);
     this.slider = new Slider(this.ctx.dom, this.ctx.state, this.layer, (offset, track) => {
       this.ctx.submit({
-        captcha_r: String(offset),
-        slide_track: JSON.stringify(track),
+        captcha_r: offset,
+        slide_track: track,
       });
     });
   }
@@ -108,6 +108,10 @@ class SlideBehaviour extends CaptchaBehaviour {
       console.error('xq-slide-captcha: 验证码图片加载失败', error);
       this.loading.fail();
     }
+  }
+
+  override onDataError(): void {
+    this.loading.fail();
   }
 
   markFailures(): void {
