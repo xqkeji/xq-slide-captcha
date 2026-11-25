@@ -84,12 +84,22 @@ export function buildModal(options: Options): HTMLElement {
   );
   body.append(wrap);
 
-  const error = el('div', 'alert alert-danger fade xq-captcha-alert-error', { role: 'alert' });
-  const success = el('div', 'alert alert-success fade xq-captcha-alert-success', {
-    role: 'status',
-  });
-  error.style.display = 'none';
-  success.style.display = 'none';
+  // 隐藏必须用 hidden 属性：Message.show() 只清 hidden 并加 .show 类，
+  // 内联 style.display='none' 优先级更高，会让提示条永远不显示。
+  const error = el(
+    'div',
+    'alert alert-danger fade xq-captcha-alert-error small text-center mt-2 mb-0',
+    { role: 'alert' },
+  );
+  error.hidden = true;
+
+  const success = el(
+    'div',
+    'alert alert-success fade xq-captcha-alert-success small text-center mt-2 mb-0',
+    { role: 'status' },
+  );
+  success.hidden = true;
+
   body.append(error, success);
 
   const slide = el('div', `${SEL.slideArea.slice(1)} position-relative w-100 overflow-hidden rounded-pill border`);

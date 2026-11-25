@@ -1,6 +1,6 @@
 {
   "name": "xq-slide-captcha",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "滑动拼图验证码前端组件（TypeScript + SCSS），配套 xqkeji/xq-app-admin 的 captchadata / captchacheck 接口",
   "files": [
     "dist"
