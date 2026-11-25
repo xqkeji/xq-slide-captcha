@@ -184,4 +184,14 @@ domReady(() => {
 
   build();
   log('演示页就绪（浏览器内模拟后端）');
+
+  // 仅演示页调试用：验收脚本靠它直接驱动 transport 与组件实例，不进 dist。
+  Object.assign(window, {
+    __xqDemo: {
+      backend,
+      get captcha() {
+        return captcha;
+      },
+    },
+  });
 });

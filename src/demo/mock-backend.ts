@@ -8,9 +8,12 @@ const WIDTH = 240;
 const HEIGHT = 150;
 const MARK_WIDTH = 50;
 const MARK_HEIGHT = 50;
-const SLIDE_TOLERANCE = 3;
+const SLIDE_TOLERANCE = 8;
 const MIN_TRACK_TIME = 200;
+const MIN_TRACK_POINTS = 3;
 const LATENCY_MS = 120;
+/** 同时保留多少轮挑战（模拟双击 init / 多标签页时旧图仍可校验）。 */
+const KEEP_CHALLENGES = 5;
 
 interface Pending {
   posX: number;
@@ -20,25 +23,34 @@ interface Pending {
 }
 
 function fail(message: string): string {
-  return JSON.stringify({ success: false, token: null, message });
+  return JSON.stringify({ code: 202, message, token: null });
 }
 
 function ok(token: string | null, message: string): string {
-  return JSON.stringify({ success: true, token, message });
+  return JSON.stringify({ code: 200, message, token });
+}
+
+function newChallengeId(): string {
+  return Math.random().toString(16).slice(2, 10) + Date.now().toString(16).slice(-8);
 }
 
 /**
- * 演示页的本地后端：实现与 xq-app-admin 的 /admin/user/captchadata、/admin/user/captchacheck 相同的请求/响应契约，
+ * 演示页的本地后端：实现与 xqkeji 扩展的 captchadata / captchacheck 相同的契约，
  * 但答案就存在浏览器内存里，因此毫无安全性可言，仅用于跑通组件。
- * 接真实后端时把 transport 换回内置 fetch 即可。
+ *
+ * 与真实服务端对齐的两点：
+ * 1. 每轮出图都带 challenge_id，答案按 id 存，校验时按 id 取 —— 旧图拿旧 id 仍可校验；
+ * 2. 不带 challenge_id 时退回「最近一轮」的旧路径，用于灰度兼容。
  */
 export class MockBackend implements Transport {
   private mode: MockMode = 'dual';
-  private pending: Pending | null = null;
+  private readonly challenges = new Map<string, Pending>();
+  private latestId: string | null = null;
 
   configure(mode: MockMode): void {
     this.mode = mode;
-    this.pending = null;
+    this.challenges.clear();
+    this.latestId = null;
   }
 
   async request(method: HttpMethod, _url: string, data?: Record<string, unknown>): Promise<string> {
@@ -49,12 +61,22 @@ export class MockBackend implements Transport {
 
   private generate(): string {
     const image = renderSlide(WIDTH, HEIGHT, MARK_WIDTH, MARK_HEIGHT);
-    this.pending = { posX: image.posX, token: null, answered: false, used: false };
+    const challengeId = newChallengeId();
+
+    this.challenges.set(challengeId, {
+      posX: image.posX,
+      token: null,
+      answered: false,
+      used: false,
+    });
+    this.latestId = challengeId;
+    this.trim();
 
     const data: CaptchaData = {
       success: true,
       type: 'slide',
       image_base64: image.dataUri,
+      challenge_id: challengeId,
       bg_width: WIDTH,
       bg_height: HEIGHT,
       mark_width: MARK_WIDTH,
@@ -67,14 +89,16 @@ export class MockBackend implements Transport {
   }
 
   private check(data: Record<string, unknown>): string {
-    const pending = this.pending;
+    // 带 token 的是宿主表单提交后的二次校验（dual 模式），令牌用过即毁。
+    // 组件自身的校验请求不会带 token（见 core 的 buildCheckPayload）。
+    if (typeof data.token === 'string') {
+      return this.checkToken(data.token);
+    }
+
+    const pending = this.resolve(data);
 
     if (!pending) {
       return fail('验证码已过期，请刷新重试');
-    }
-
-    if (typeof data.token === 'string') {
-      return this.checkToken(pending, data.token);
     }
 
     // backend_only：不带令牌的表单提交凭会话已验证状态幂等放行，与后端口径一致。
@@ -99,29 +123,56 @@ export class MockBackend implements Transport {
       return ok(null, '验证成功');
     }
 
-    pending.token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    pending.token = newChallengeId();
 
     return ok(pending.token, '验证成功，请完成后续操作');
   }
 
-  private checkToken(pending: Pending, token: string): string {
-    if (!pending.token || pending.token !== token) {
-      return fail('验证令牌无效');
+  /** 宿主表单提交后的二次校验：令牌用过即毁。 */
+  private checkToken(token: string): string {
+    for (const pending of this.challenges.values()) {
+      if (pending.token !== token) {
+        continue;
+      }
+
+      if (pending.used) {
+        return fail('验证令牌已被使用，请重新验证');
+      }
+
+      pending.used = true;
+
+      return ok(null, '二次验证成功');
     }
 
-    if (pending.used) {
-      return fail('验证令牌已被使用，请重新验证');
-    }
+    return fail('验证令牌无效');
+  }
 
-    pending.used = true;
+  /**
+   * 仅演示页调试用：读某一轮的真实答案。
+   * 真实后端的答案永远不会下发，这里只是为了让本地验收脚本能构造「正确的一次拖动」。
+   */
+  peek(challengeId: string): { posX: number } | null {
+    const pending = this.challenges.get(challengeId);
 
-    return ok(null, '二次验证成功');
+    return pending ? { posX: pending.posX } : null;
+  }
+
+  /** 有 challenge_id 就精确取，没有则退回最近一轮（灰度兼容）。 */
+  private resolve(data: Record<string, unknown>): Pending | null {
+    const id =
+      typeof data.challenge_id === 'string' && data.challenge_id !== ''
+        ? data.challenge_id
+        : this.latestId;
+
+    return id ? (this.challenges.get(id) ?? null) : null;
   }
 
   private checkSlide(pending: Pending, data: Record<string, unknown>): string | null {
-    const offset = Number(data.captcha_r);
+    // 服务端对字段名做了兼容，这里也跟着兼容几种偏移量写法。
+    const raw = data.offset ?? data.captcha_r ?? data.pos_x ?? data.slide_offset;
+    const offset = Number(raw);
 
-    if (!Number.isFinite(offset)) {
+    if (raw === undefined || raw === null || !Number.isFinite(offset)) {
       return '无效的偏移量';
     }
 
@@ -129,16 +180,58 @@ export class MockBackend implements Transport {
       return '验证失败，请重试';
     }
 
-    const track = data.slide_track;
+    // 轨迹字段名同样兼容，数组或 JSON 字符串都收。
+    const rawTrack = data.track ?? data.slide_track ?? data.track_points ?? [];
+    let track: unknown = rawTrack;
 
-    if (Array.isArray(track) && track.length >= 3) {
-      const totalTime = Math.max(...track.map((point) => Number(point?.t) || 0));
-
-      if (totalTime < MIN_TRACK_TIME) {
-        return '操作过快，请重试';
+    if (typeof track === 'string') {
+      try {
+        track = JSON.parse(track);
+      } catch {
+        return '轨迹数据无效，请重试';
       }
     }
 
+    if (!Array.isArray(track) || track.length < MIN_TRACK_POINTS) {
+      return '轨迹数据无效，请重试';
+    }
+
+    const points = track.map((point) => {
+      const record = (point ?? {}) as Record<string, unknown>;
+
+      return {
+        t: Number(record.t),
+      };
+    });
+
+    if (points.some((point) => !Number.isFinite(point.t))) {
+      return '轨迹数据无效，请重试';
+    }
+
+    for (let index = 1; index < points.length; index += 1) {
+      if (points[index].t < points[index - 1].t) {
+        return '轨迹数据无效，请重试';
+      }
+    }
+
+    const totalTime = points[points.length - 1].t - points[0].t;
+
+    if (totalTime < MIN_TRACK_TIME) {
+      return '操作过快，请重试';
+    }
+
     return null;
+  }
+
+  private trim(): void {
+    while (this.challenges.size > KEEP_CHALLENGES) {
+      const oldest = this.challenges.keys().next().value;
+
+      if (oldest === undefined || oldest === this.latestId) {
+        break;
+      }
+
+      this.challenges.delete(oldest);
+    }
   }
 }
